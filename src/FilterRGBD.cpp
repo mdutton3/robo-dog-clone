@@ -16,6 +16,10 @@
 #include <opencv/cvaux.h>
 #include <opencv/highgui.h>
 #include <opencv/cxcore.h>
+#include <pcl/point_types.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/kdtree/kdtree_flann.h>
+#include <pcl/segmentation/extract_clusters.h>
 
 typedef pcl::PointXYZRGB PointType;
 typedef pcl::PointCloud<PointType> PointCloud;
@@ -136,8 +140,8 @@ class FilterRGBD {
 
 public:
 	FilterRGBD() :
-		nh_("~"), ball_hsv_min(cvScalar(40, 100, 90, 0)), ball_hsv_max(
-				cvScalar(90, 256, 256, 0)) {
+		nh_("~"), ball_hsv_min(cvScalar(20, 110, 110, 0)), ball_hsv_max(
+				cvScalar(45, 256, 256, 0)) {
 		pc_sub = nh_.subscribe("in", 1, &FilterRGBD::OnPC, this);
 		pc_pub = nh_.advertise<PointCloud> ("out", 10);
 	}
@@ -147,14 +151,17 @@ public:
 
 	void OnPC(PointCloud const & pc) {
 
-		PointCloud out;
-		out.points.reserve(pc.points.size() / 4);
+		std::vector<size_t> indices;
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered( new pcl::PointCloud<pcl::PointXYZ> );
+		cloud_filtered->points.reserve(pc.points.size() / 4);
 
 		for (size_t i = 0; i < pc.points.size(); ++i) {
 			PointType const & pt = pc.points[i];
 			struct HSV hsv;
 			convertRGBtoHSV(pt, hsv);
-			//ROS_INFO("RGB: %3u,%3u,%3u\t\tHSV: %3u,%3u,%3u", pt.r, pt.g, pt.b, hsv.h, hsv.s, hsv.v );
+
+			if( !(pt.x == pt.x) )
+				continue;
 
 			if ((hsv.h < ball_hsv_min.val[0])
 					|| (hsv.h > ball_hsv_max.val[0]))
@@ -166,8 +173,45 @@ public:
 					|| (hsv.v > ball_hsv_max.val[2]))
 				continue;
 
-			out.push_back(pt);
+			cloud_filtered->push_back( pcl::PointXYZ(pt.x, pt.y, pt.z) );
+			indices.push_back(i);
 		}
+
+
+		typedef pcl::EuclideanClusterExtraction<pcl::PointXYZ> ECE;
+		typedef pcl::KdTreeFLANN<pcl::PointXYZ> KdTree;
+		KdTree::Ptr tree (new KdTree);
+		tree->setInputCloud (cloud_filtered);
+
+		ECE ec;
+		ec.setClusterTolerance( 0.02 );
+		ec.setMinClusterSize(100);
+		ec.setSearchMethod( tree );
+		ec.setInputCloud( cloud_filtered );
+
+		std::vector<pcl::PointIndices> cluster_indices;
+		ec.extract( cluster_indices );
+
+		size_t iBiggest = 0;
+		for( size_t i = 1; i < cluster_indices.size(); ++i )
+		{
+			if( cluster_indices[i].indices.size() > cluster_indices[iBiggest].indices.size() )
+				iBiggest = i;
+		}
+
+		if( iBiggest >= cluster_indices.size() )
+			return;
+
+		pcl::PointIndices const & cluster_idx = cluster_indices[iBiggest];
+		PointCloud out;
+		out.points.reserve( cluster_idx.indices.size() );
+		for( size_t i = 0; i < cluster_idx.indices.size(); ++i )
+		{
+			size_t filtered_idx = cluster_idx.indices[i];
+			size_t idx = indices[ filtered_idx ];
+			out.points.push_back( pc.points[ idx ] );
+		}
+
 		out.header = pc.header;
 		out.height = out.points.size();
 		out.width = 1;
@@ -175,7 +219,6 @@ public:
 		out.sensor_orientation_ = pc.sensor_orientation_;
 		out.sensor_origin_ = pc.sensor_origin_;
 
-		ROS_INFO("Out size: %u", out.points.size() );
 		pc_pub.publish( out );
 	}
 };
