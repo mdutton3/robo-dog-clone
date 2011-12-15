@@ -5,3 +5,5 @@ bin/
 cmake_install.cmake
 msg_gen/
 src/robo_dog/
+.cproject
+.project
