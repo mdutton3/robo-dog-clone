@@ -166,7 +166,6 @@ public:
 		double area = cvGetSpatialMoment(moments, 0, 0);
 		x = cvGetSpatialMoment(moments, 1, 0) / area;
 		y = cvGetSpatialMoment(moments, 0, 1) / area;
-		ROS_INFO("Info (X %f , Y %f)", x, y);
 		if (x == x) {//not NAN
 			lastx = lastx * 0.50 + x * 0.50;
 			lasty = lasty * 0.50 + y * 0.50;
@@ -180,7 +179,6 @@ public:
 
 		// Publish the ball info
 		if (x == x) {//not NAN
-			ROS_INFO("consecuvite_counter %u", consecuvite_counter);
 			if (consecuvite_counter >= 20) {
 				robo_dog::ballinfo b;
 				b.x = lastx;
@@ -198,11 +196,11 @@ public:
 			consecuvite_counter = 0;
 		}
 
-		cv_bridge::CvImagePtr depthCopy = lastDepth;
-		fprintf( stderr, "depth copy: %p\n", depthCopy.get() );
-		ROS_INFO( "depth copy: %p\n", depthCopy.get() );
-		if( depthCopy.get() )
-			cvShowImage("depth", &static_cast<IplImage> (depthCopy->image));
+//		cv_bridge::CvImagePtr depthCopy = lastDepth;
+//		fprintf( stderr, "depth copy: %p\n", depthCopy.get() );
+//		ROS_INFO( "depth copy: %p\n", depthCopy.get() );
+//		if( depthCopy.get() )
+//			cvShowImage("depth", &static_cast<IplImage> (depthCopy->image));
 		cvShowImage("frame", &static_cast<IplImage> (cv_ptr->image));
 		cvShowImage("threshold", thresholded);
 		key = cvWaitKey(10);
