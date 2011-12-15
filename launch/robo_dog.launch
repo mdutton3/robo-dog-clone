@@ -26,5 +26,8 @@
     <remap from="~/xy" to="/BallTracker/ballinfo" />
     <remap from="~/depth" to="/camera/depth/image" />
   </node>
+  <node pkg="robo_dog" name="FilterRGBD" type="FilterRGBD" output="screen">
+    <remap from="~/in" to="/camera/rgb/points" />
+  </node>
 </launch>
 
