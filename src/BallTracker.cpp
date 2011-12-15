@@ -54,8 +54,8 @@ public:
 		looking_for_ball = true;
 		image_sub_ = it_.subscribe("/camera/rgb/image_color", 1,
 				&BallTracker::findBall, this);
-//		depth_sub_ = it_.subscribe("/camera/depth/image", 1,
-//				&BallTracker::depth, this);
+		depth_sub_ = it_.subscribe("/camera/depth/image", 1,
+				&BallTracker::depth, this);
 
 		mode_change = nh_.subscribe("mode_change", 1,
 				&BallTracker::change_mode, this);
@@ -79,17 +79,28 @@ public:
 	}
 
 	void depth(const sensor_msgs::ImageConstPtr& msg) {
-//		ROS_INFO("Showing depth message");
-//		fprintf(stderr, "wtf -- ");
-//		try {
-//			printf("wtf -- ");
-//			lastDepth = cv_bridge::toCvCopy(msg, enc::TYPE_32FC1);
-//			printf("wtf2\n");
-//		} catch (cv_bridge::Exception& e) {
-//			ROS_INFO("Error");
-//			ROS_ERROR("cv_bridge exception: %s", e.what());
-//			return;
-//		}
+		try {
+			lastDepth = cv_bridge::toCvCopy(msg, enc::TYPE_32FC1);
+			if( lastDepth.get() )
+			{
+				unsigned int len = lastDepth->image.rows * lastDepth->image.cols;
+				float * p = lastDepth->image.ptr<float>(0);
+				for(unsigned int i = 0; i < len; ++i)
+				{
+					if( p[i] >= 2.0 )
+						p[i] = 1.0;
+					else if( p[i] > 0.0 )
+						p[i] /= 2;
+					else
+						p[i] = 0.0;
+				}
+			}
+
+		} catch (cv_bridge::Exception& e) {
+			ROS_INFO("Error");
+			ROS_ERROR("cv_bridge exception: %s", e.what());
+			return;
+		}
 	}
 
 	void findBall(const sensor_msgs::ImageConstPtr& msg) {
@@ -187,11 +198,11 @@ public:
 			consecuvite_counter = 0;
 		}
 
-//		cv_bridge::CvImagePtr depthCopy = lastDepth;
-//		fprintf( stderr, "depth copy: %p\n", depthCopy.get() );
-//		ROS_INFO( "depth copy: %p\n", depthCopy.get() );
-//		if( depthCopy.get() )
-//			cvShowImage("depth", &static_cast<IplImage> (depthCopy->image));
+		cv_bridge::CvImagePtr depthCopy = lastDepth;
+		fprintf( stderr, "depth copy: %p\n", depthCopy.get() );
+		ROS_INFO( "depth copy: %p\n", depthCopy.get() );
+		if( depthCopy.get() )
+			cvShowImage("depth", &static_cast<IplImage> (depthCopy->image));
 		cvShowImage("frame", &static_cast<IplImage> (cv_ptr->image));
 		cvShowImage("threshold", thresholded);
 		key = cvWaitKey(10);
