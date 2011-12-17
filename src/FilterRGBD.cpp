@@ -25,7 +25,8 @@ typedef pcl::PointXYZRGB PointType;
 typedef pcl::PointCloud<PointType> PointCloud;
 
 template<typename RGB, typename HSV>
-void convertRGBtoHSV(RGB const & rgb, HSV & hsv) {
+void convertRGBtoHSV(RGB const & rgb, HSV & hsv)
+{
 	float fR, fG, fB;
 	float fH, fS, fV;
 	static const float FLOAT_TO_BYTE = 255.0f;
@@ -46,32 +47,47 @@ void convertRGBtoHSV(RGB const & rgb, HSV & hsv) {
 	float fMin, fMax;
 	int iMax;
 	// Get the min and max, but use integer comparisons for slight speedup.
-	if (bB < bG) {
-		if (bB < bR) {
+	if (bB < bG)
+	{
+		if (bB < bR)
+		{
 			fMin = fB;
-			if (bR > bG) {
+			if (bR > bG)
+			{
 				iMax = bR;
 				fMax = fR;
-			} else {
+			}
+			else
+			{
 				iMax = bG;
 				fMax = fG;
 			}
-		} else {
+		}
+		else
+		{
 			fMin = fR;
 			fMax = fG;
 			iMax = bG;
 		}
-	} else {
-		if (bG < bR) {
+	}
+	else
+	{
+		if (bG < bR)
+		{
 			fMin = fG;
-			if (bB > bR) {
+			if (bB > bR)
+			{
 				fMax = fB;
 				iMax = bB;
-			} else {
+			}
+			else
+			{
 				fMax = fR;
 				iMax = bR;
 			}
-		} else {
+		}
+		else
+		{
 			fMin = fR;
 			fMax = fB;
 			iMax = bB;
@@ -79,14 +95,20 @@ void convertRGBtoHSV(RGB const & rgb, HSV & hsv) {
 	}
 	fDelta = fMax - fMin;
 	fV = fMax; // Value (Brightness).
-	if (iMax != 0) { // Make sure its not pure black.
+	if (iMax != 0)
+	{ // Make sure its not pure black.
 		fS = fDelta / fMax; // Saturation.
 		float ANGLE_TO_UNIT = 1.0f / (6.0f * fDelta); // Make the Hues between 0.0 to 1.0 instead of 6.0
-		if (iMax == bR) { // between yellow and magenta.
+		if (iMax == bR)
+		{ // between yellow and magenta.
 			fH = (fG - fB) * ANGLE_TO_UNIT;
-		} else if (iMax == bG) { // between cyan and yellow.
+		}
+		else if (iMax == bG)
+		{ // between cyan and yellow.
 			fH = (2.0f / 6.0f) + (fB - fR) * ANGLE_TO_UNIT;
-		} else { // between magenta and cyan.
+		}
+		else
+		{ // between magenta and cyan.
 			fH = (4.0f / 6.0f) + (fR - fG) * ANGLE_TO_UNIT;
 		}
 		// Wrap outlier Hues around the circle.
@@ -94,7 +116,9 @@ void convertRGBtoHSV(RGB const & rgb, HSV & hsv) {
 			fH += 1.0f;
 		if (fH >= 1.0f)
 			fH -= 1.0f;
-	} else {
+	}
+	else
+	{
 		// color is pure Black.
 		fS = 0;
 		fH = 0; // undefined hue
@@ -125,13 +149,15 @@ void convertRGBtoHSV(RGB const & rgb, HSV & hsv) {
 	hsv.v = bV;
 }
 
-struct HSV {
+struct HSV
+{
 	uint8_t h;
 	uint8_t s;
 	uint8_t v;
 };
 
-class FilterRGBD {
+class FilterRGBD
+{
 	ros::NodeHandle nh_;
 	ros::Subscriber pc_sub;
 	ros::Publisher pc_pub;
@@ -141,75 +167,77 @@ class FilterRGBD {
 public:
 	FilterRGBD() :
 		nh_("~"), ball_hsv_min(cvScalar(20, 110, 110, 0)), ball_hsv_max(
-				cvScalar(45, 256, 256, 0)) {
+				cvScalar(45, 256, 256, 0))
+	{
 		pc_sub = nh_.subscribe("in", 1, &FilterRGBD::OnPC, this);
 		pc_pub = nh_.advertise<PointCloud> ("out", 10);
 	}
 
-	~FilterRGBD() {
+	~FilterRGBD()
+	{
 	}
 
-	void OnPC(PointCloud const & pc) {
+	void OnPC(PointCloud const & pc)
+	{
 
 		std::vector<size_t> indices;
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered( new pcl::PointCloud<pcl::PointXYZ> );
+		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<
+				pcl::PointXYZ>);
 		cloud_filtered->points.reserve(pc.points.size() / 4);
 
-		for (size_t i = 0; i < pc.points.size(); ++i) {
+		for (size_t i = 0; i < pc.points.size(); ++i)
+		{
 			PointType const & pt = pc.points[i];
 			struct HSV hsv;
 			convertRGBtoHSV(pt, hsv);
 
-			if( !(pt.x == pt.x) )
+			if (!(pt.x == pt.x))
 				continue;
 
-			if ((hsv.h < ball_hsv_min.val[0])
-					|| (hsv.h > ball_hsv_max.val[0]))
+			if ((hsv.h < ball_hsv_min.val[0]) || (hsv.h > ball_hsv_max.val[0]))
 				continue;
-			if ((hsv.s < ball_hsv_min.val[1])
-					|| (hsv.s > ball_hsv_max.val[1]))
+			if ((hsv.s < ball_hsv_min.val[1]) || (hsv.s > ball_hsv_max.val[1]))
 				continue;
-			if ((hsv.v < ball_hsv_min.val[2])
-					|| (hsv.v > ball_hsv_max.val[2]))
+			if ((hsv.v < ball_hsv_min.val[2]) || (hsv.v > ball_hsv_max.val[2]))
 				continue;
 
-			cloud_filtered->push_back( pcl::PointXYZ(pt.x, pt.y, pt.z) );
+			cloud_filtered->push_back(pcl::PointXYZ(pt.x, pt.y, pt.z));
 			indices.push_back(i);
 		}
 
-
 		typedef pcl::EuclideanClusterExtraction<pcl::PointXYZ> ECE;
 		typedef pcl::KdTreeFLANN<pcl::PointXYZ> KdTree;
-		KdTree::Ptr tree (new KdTree);
-		tree->setInputCloud (cloud_filtered);
+		KdTree::Ptr tree(new KdTree);
+		tree->setInputCloud(cloud_filtered);
 
 		ECE ec;
-		ec.setClusterTolerance( 0.02 );
+		ec.setClusterTolerance(0.02);
 		ec.setMinClusterSize(100);
-		ec.setSearchMethod( tree );
-		ec.setInputCloud( cloud_filtered );
+		ec.setSearchMethod(tree);
+		ec.setInputCloud(cloud_filtered);
 
 		std::vector<pcl::PointIndices> cluster_indices;
-		ec.extract( cluster_indices );
+		ec.extract(cluster_indices);
 
 		size_t iBiggest = 0;
-		for( size_t i = 1; i < cluster_indices.size(); ++i )
+		for (size_t i = 1; i < cluster_indices.size(); ++i)
 		{
-			if( cluster_indices[i].indices.size() > cluster_indices[iBiggest].indices.size() )
+			if (cluster_indices[i].indices.size()
+					> cluster_indices[iBiggest].indices.size())
 				iBiggest = i;
 		}
 
-		if( iBiggest >= cluster_indices.size() )
+		if (iBiggest >= cluster_indices.size())
 			return;
 
 		pcl::PointIndices const & cluster_idx = cluster_indices[iBiggest];
 		PointCloud out;
-		out.points.reserve( cluster_idx.indices.size() );
-		for( size_t i = 0; i < cluster_idx.indices.size(); ++i )
+		out.points.reserve(cluster_idx.indices.size());
+		for (size_t i = 0; i < cluster_idx.indices.size(); ++i)
 		{
 			size_t filtered_idx = cluster_idx.indices[i];
-			size_t idx = indices[ filtered_idx ];
-			out.points.push_back( pc.points[ idx ] );
+			size_t idx = indices[filtered_idx];
+			out.points.push_back(pc.points[idx]);
 		}
 
 		out.header = pc.header;
@@ -219,11 +247,12 @@ public:
 		out.sensor_orientation_ = pc.sensor_orientation_;
 		out.sensor_origin_ = pc.sensor_origin_;
 
-		pc_pub.publish( out );
+		pc_pub.publish(out);
 	}
 };
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv)
+{
 	ros::init(argc, argv, "FilterRGBD");
 	FilterRGBD node;
 	ros::spin();
