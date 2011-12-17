@@ -20,11 +20,17 @@
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl/common/centroid.h>
 
 #include "RGB2HSV.hpp"
 
-typedef pcl::PointXYZRGB PointType;
-typedef pcl::PointCloud<PointType> PointCloud;
+using pcl::PointXYZ;
+using pcl::PointXYZRGB;
+using pcl::PointCloud;
+
+//typedef PointXYZRGB PointType;
+typedef PointCloud< PointXYZ > PointCloudXYZ;
+typedef PointCloud< PointXYZRGB > PointCloudRGB;
 
 
 struct HSV
@@ -39,8 +45,11 @@ class FilterRGBD
 	ros::NodeHandle nh_;
 	ros::Subscriber pc_sub;
 	ros::Publisher pc_pub;
+	ros::Publisher centroid_pub;
 	CvScalar const ball_hsv_min;
 	CvScalar const ball_hsv_max;
+
+	Eigen::Vector4f centroid_filtered;
 
 public:
 	FilterRGBD() :
@@ -48,25 +57,26 @@ public:
 				cvScalar(45, 256, 256, 0))
 	{
 		pc_sub = nh_.subscribe("in", 1, &FilterRGBD::OnPC, this);
-		pc_pub = nh_.advertise<PointCloud> ("out", 10);
+		pc_pub = nh_.advertise<PointCloudRGB> ("out", 10);
+		centroid_pub = nh_.advertise<PointCloudXYZ> ("centroid", 10);
 	}
 
 	~FilterRGBD()
 	{
 	}
 
-	void OnPC(PointCloud const & pc)
+	void OnPC( PointCloudRGB const & pc )
 	{
 
 		std::vector<size_t> indices;
-		pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_filtered(new pcl::PointCloud<
-				pcl::PointXYZ>);
+		PointCloudXYZ::Ptr cloud_filtered(new PointCloudXYZ);
+
 		cloud_filtered->points.reserve(pc.points.size() / 4);
 
 		for (size_t i = 0; i < pc.points.size(); ++i)
 		{
-			PointType const & pt = pc.points[i];
-			struct HSV hsv;
+			PointXYZRGB const & pt = pc.points[i];
+			HSV hsv;
 			convertRGBtoHSV(pt, hsv);
 
 			if (!(pt.x == pt.x))
@@ -79,12 +89,12 @@ public:
 			if ((hsv.v < ball_hsv_min.val[2]) || (hsv.v > ball_hsv_max.val[2]))
 				continue;
 
-			cloud_filtered->push_back(pcl::PointXYZ(pt.x, pt.y, pt.z));
+			cloud_filtered->push_back( PointXYZ(pt.x, pt.y, pt.z) );
 			indices.push_back(i);
 		}
 
-		typedef pcl::EuclideanClusterExtraction<pcl::PointXYZ> ECE;
-		typedef pcl::KdTreeFLANN<pcl::PointXYZ> KdTree;
+		typedef pcl::EuclideanClusterExtraction<PointXYZ> ECE;
+		typedef pcl::KdTreeFLANN<PointXYZ> KdTree;
 		KdTree::Ptr tree(new KdTree);
 		tree->setInputCloud(cloud_filtered);
 
@@ -109,7 +119,7 @@ public:
 			return;
 
 		pcl::PointIndices const & cluster_idx = cluster_indices[iBiggest];
-		PointCloud out;
+		PointCloudRGB out;
 		out.points.reserve(cluster_idx.indices.size());
 		for (size_t i = 0; i < cluster_idx.indices.size(); ++i)
 		{
@@ -126,6 +136,22 @@ public:
 		out.sensor_origin_ = pc.sensor_origin_;
 
 		pc_pub.publish(out);
+
+		Eigen::Vector4f centroid_sample;
+		pcl::compute3DCentroid( out, centroid_sample );
+
+		static double const sample_weight = 0.5;
+		centroid_filtered = centroid_filtered * (1.0 - sample_weight) + centroid_sample * sample_weight;
+
+		PointCloudXYZ centroid_pc;
+		centroid_pc.push_back( pcl::PointXYZ( centroid_filtered[0], centroid_filtered[1], centroid_filtered[2] ) );
+		centroid_pc.header = pc.header;
+		centroid_pc.height = centroid_pc.width = 1;
+		centroid_pc.is_dense = true;
+		centroid_pc.sensor_orientation_ = pc.sensor_orientation_;
+		centroid_pc.sensor_origin_ = pc.sensor_origin_;
+		centroid_pub.publish( centroid_pc );
+
 	}
 };
 
