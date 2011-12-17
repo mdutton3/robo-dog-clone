@@ -35,8 +35,5 @@ find_package ( OpenCV REQUIRED )
 #include_directories ( ${OpenCV_INCLUDE_DIRS} /usr/include/opencv-2.3.1/)
 include_directories ( /usr/include/ /usr/local/include/ /usr/include/c++/4.4/ )
 
-rosbuild_add_executable(BallTracker src/BallTracker.cpp)
-rosbuild_add_executable(Controller src/Controller.cpp)
-rosbuild_add_executable(GetZ src/GetZ.cpp)
 rosbuild_add_executable(FilterRGBD src/FilterRGBD.cpp)
-#target_link_libraries (BallTracker m ${OpenCV_LIBS} )
+

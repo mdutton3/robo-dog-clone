@@ -1,4 +1,4 @@
-<!--  Author: Martin Levihn -->
+<!--  Author: Matthew Dutton -->
 
 <launch>	
   <arg name="debug" default="false"/>
@@ -20,12 +20,6 @@
   </node>
   <include file="$(find openni_camera)/launch/kinect_frames.launch"/>
   
-
-  <node pkg="robo_dog" name="BallTracker" type="BallTracker" output="screen" />
-  <node pkg="robo_dog" name="GetZ" type="GetZ" output="screen">
-    <remap from="~/xy" to="/BallTracker/ballinfo" />
-    <remap from="~/depth" to="/camera/depth/image" />
-  </node>
   <node pkg="robo_dog" name="FilterRGBD" type="FilterRGBD" output="screen">
     <remap from="~/in" to="/camera/rgb/points" />
   </node>
