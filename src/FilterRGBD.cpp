@@ -1,8 +1,5 @@
 /*------------------------------------------------------------------*/
 
-#include "std_msgs/String.h"
-#include "std_msgs/Float64.h"
-
 #include <sstream>
 #include <cstdio>
 
@@ -10,12 +7,6 @@
 #include <geometry_msgs/Point.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <pcl_ros/point_cloud.h>
-#include <pcl/point_types.h>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv/cvaux.h>
-#include <opencv/highgui.h>
-#include <opencv/cxcore.h>
 #include <pcl/point_types.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
