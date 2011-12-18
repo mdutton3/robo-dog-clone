@@ -36,4 +36,4 @@ find_package ( OpenCV REQUIRED )
 include_directories ( /usr/include/ /usr/local/include/ /usr/include/c++/4.4/ )
 
 rosbuild_add_executable(FilterRGBD src/FilterRGBD.cpp)
-
+target_link_libraries(FilterRGBD ach amino)

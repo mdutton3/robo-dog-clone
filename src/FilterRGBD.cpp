@@ -21,6 +21,10 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl/common/centroid.h>
+#include <ach.h>
+#include <ctime>
+#include <amino.hpp>
+#include <amino/time.h>
 
 #include "RGB2HSV.hpp"
 
@@ -63,9 +67,25 @@ class FilterRGBD
 
 	Eigen::Vector4f centroid_filtered;
 
+	std::vector<size_t> indices;
+	PointCloudXYZ::Ptr cloud_filtered;
+	PointCloudRGB cluster_pc;
+
+	std::string ach_channel_name;
+	ach_channel_t ach_channel;
+	bool ach_valid;
+
+	int cycle_count;
+	timespec last_update;
+
 public:
-	FilterRGBD() :
-		nh_("~"), hsv_min(20, 110, 110), hsv_max(45, 255, 255)
+	FilterRGBD()
+		: nh_("~")
+		, hsv_min(20, 110, 110), hsv_max(45, 255, 255)
+		//, hsv_min(60, 110, 110), hsv_max(80, 255, 255)
+		, cloud_filtered(new PointCloudXYZ)
+		, ach_channel_name("obj-centroid"), ach_channel(), ach_valid(false)
+		, cycle_count(0)
 	{
 		pc_sub = nh_.subscribe("in", 1, &FilterRGBD::OnPC, this);
 		pc_pub = nh_.advertise<PointCloudRGB> ("out", 10);
@@ -85,6 +105,14 @@ public:
 			hsv_max.s = temp;
 		if (nh_.getParam("val_max", temp))
 			hsv_max.v = temp;
+
+		nh_.getParam("ach_channel", ach_channel_name);
+
+		int r = ach_open(&ach_channel, ach_channel_name.c_str(), NULL);
+		ach_valid = (ACH_OK == r);
+		assert( ach_valid && "Could not open ACH channel" );
+
+		last_update = aa_tm_now();
 	}
 
 	~FilterRGBD()
@@ -93,12 +121,8 @@ public:
 
 	void OnPC(PointCloudRGB const & pc)
 	{
-		ROS_DEBUG( "Received PC of size: %zu", pc.points.size() );
-
-		std::vector<size_t> indices;
-		PointCloudXYZ::Ptr cloud_filtered(new PointCloudXYZ);
-
-		cloud_filtered->points.reserve(pc.points.size() / 4);
+		indices.clear();
+		cloud_filtered->points.clear();
 
 		for (size_t i = 0; i < pc.points.size(); ++i)
 		{
@@ -126,8 +150,8 @@ public:
 		tree->setInputCloud(cloud_filtered);
 
 		ECE ec;
-		ec.setClusterTolerance(0.02);
-		ec.setMinClusterSize(100);
+		ec.setClusterTolerance(0.01);
+		ec.setMinClusterSize(25);
 		ec.setSearchMethod(tree);
 		ec.setInputCloud(cloud_filtered);
 
@@ -146,28 +170,28 @@ public:
 			return;
 
 		pcl::PointIndices const & cluster_idx = cluster_indices[iBiggest];
-		PointCloudRGB out;
-		out.points.reserve(cluster_idx.indices.size());
+
+		cluster_pc.points.reserve(cluster_idx.indices.size());
 		for (size_t i = 0; i < cluster_idx.indices.size(); ++i)
 		{
 			size_t filtered_idx = cluster_idx.indices[i];
 			size_t idx = indices[filtered_idx];
-			out.points.push_back(pc.points[idx]);
+			cluster_pc.points.push_back(pc.points[idx]);
 		}
 
-		out.header = pc.header;
-		out.height = out.points.size();
-		out.width = 1;
-		out.is_dense = true;
-		out.sensor_orientation_ = pc.sensor_orientation_;
-		out.sensor_origin_ = pc.sensor_origin_;
+		cluster_pc.header = pc.header;
+		cluster_pc.height = cluster_pc.points.size();
+		cluster_pc.width = 1;
+		cluster_pc.is_dense = true;
+		cluster_pc.sensor_orientation_ = pc.sensor_orientation_;
+		cluster_pc.sensor_origin_ = pc.sensor_origin_;
 
-		pc_pub.publish(out);
+		pc_pub.publish( cluster_pc );
 
 		Eigen::Vector4f centroid_sample;
-		pcl::compute3DCentroid(out, centroid_sample);
+		pcl::compute3DCentroid(cluster_pc, centroid_sample);
 
-		static double const sample_weight = 0.5;
+		static double const sample_weight = 0.80;
 		centroid_filtered = centroid_filtered * (1.0 - sample_weight)
 				+ centroid_sample * sample_weight;
 
@@ -181,6 +205,28 @@ public:
 		centroid_pc.sensor_origin_ = pc.sensor_origin_;
 		centroid_pub.publish(centroid_pc);
 
+		publishToAch(centroid_filtered);
+
+		++cycle_count;
+		if ((cycle_count % 100) == 0)
+		{
+			cycle_count = 0;
+			timespec t_now = aa_tm_now();
+			double delta = aa_tm_timespec2sec(aa_tm_sub(t_now, last_update));
+			fprintf(stderr,
+					"\t100 cycles in %lf seconds for nominal rate of %lf\n",
+					delta, 100.0 / delta);
+			last_update = t_now;
+		}
+	}
+
+	void publishToAch(Eigen::Vector4f const & pt)
+	{
+		if (ach_valid)
+		{
+			double data[3] = { pt[0], pt[1], pt[2] };
+			ach_put(&ach_channel, data, sizeof(data));
+		}
 	}
 };
 
