@@ -11,7 +11,11 @@
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/segmentation/extract_clusters.h>
-#include <pcl/common/centroid.h>
+#if ROS_VERSION_MINIMUM(1,5,0)
+#	include <pcl/common/centroid.h>
+#else
+#	include <pcl/features/feature.h>
+#endif
 #include <ach.h>
 #include <ctime>
 #include <amino.hpp>
