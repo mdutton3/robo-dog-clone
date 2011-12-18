@@ -110,7 +110,10 @@ public:
 
 		int r = ach_open(&ach_channel, ach_channel_name.c_str(), NULL);
 		ach_valid = (ACH_OK == r);
-		assert( ach_valid && "Could not open ACH channel" );
+		if( !ach_valid )
+		{
+			ROS_ERROR( "Could not open ACH channel[%s], error: %d", ach_channel_name.c_str(), r );
+		}
 
 		last_update = aa_tm_now();
 	}
