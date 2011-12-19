@@ -11,11 +11,7 @@
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/segmentation/extract_clusters.h>
-#if ROS_VERSION_MINIMUM(1,5,0)
-#	include <pcl/common/centroid.h>
-#else
-#	include <pcl/features/feature.h>
-#endif
+#include <pcl/common/centroid.h>
 #include <ach.h>
 #include <ctime>
 #include <amino.hpp>
@@ -27,7 +23,6 @@ using pcl::PointXYZ;
 using pcl::PointXYZRGB;
 using pcl::PointCloud;
 
-//typedef PointXYZRGB PointType;
 typedef PointCloud<PointXYZ> PointCloudXYZ;
 typedef PointCloud<PointXYZRGB> PointCloudRGB;
 
