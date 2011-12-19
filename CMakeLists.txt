@@ -34,3 +34,6 @@ include_directories ( /usr/include/ /usr/local/include/ /usr/include/c++/4.4/ )
 
 rosbuild_add_executable(FilterRGBD src/FilterRGBD.cpp)
 target_link_libraries(FilterRGBD ach)
+
+rosbuild_add_executable(centroid-cat src/centroid-cat.cpp)
+target_link_libraries(centroid-cat ach)
