@@ -73,6 +73,7 @@ public:
 		: nh_("~")
 		//, hsv_min(20, 110, 110), hsv_max(45, 255, 255)
 		, hsv_min(60, 110, 110), hsv_max(80, 255, 255)
+		, centroid_filtered(0,0,0,0)
 		, cloud_filtered(new PointCloudXYZ)
 		, ach_channel_name("obj-centroid"), ach_channel(), ach_valid(false)
 		, cycle_count(0)
