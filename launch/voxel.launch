@@ -1,0 +1,22 @@
+<launch>
+  <node pkg="topic_tools" type="throttle" name="throttle"
+	args="messages /camera/depth/points 3.5"
+	output="screen" />
+  <node pkg="nodelet" type="nodelet" name="vg"
+	args="standalone pcl/VoxelGrid"
+	output="screen" >
+    <remap from="~input" to="/camera/depth/points_throttle" />
+    <rosparam>
+      filter_field_name: y
+      filter_field_min: -5
+      filter_field_max: 5
+      leaf_size: 0.02
+    </rosparam>
+  </node>
+  <!--
+  <node pkg="tf" type="static_transform_publisher" name="depth_tf"
+	args="0 0 0 -1.577 0 -1.577 /base /openni_depth_optical_frame 100" />
+  <node pkg="tf" type="static_transform_publisher" name="rgb_tf"
+	args="0 0 0 -1.577 0 -1.577 /base /openni_rgb_optical_frame 100" />
+  -->
+</launch>
